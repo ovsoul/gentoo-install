@@ -27,7 +27,7 @@ SWAP_SIZE="4GiB"                   # Swap recomendado para 14GB RAM
 
 ### MIRRORS (redundantes) ###
 MIRRORS=(
-    "https://distfiles.gentoo.org/releases/amd64/autobuilds"
+    "https://distfiles.gentoo.org/releases/amd64/autobuilds/20250622T165243Z/stage3-amd64-openrc-20250622T165243Z.tar.xz"
     "https://gentoo.osuosl.org/releases/amd64/autobuilds"
     "https://mirror.leaseweb.com/gentoo/releases/amd64/autobuilds"
 )
@@ -120,8 +120,8 @@ done
 
 ### Extracción ###
 info "Extrayendo stage3..."
-tar xpf /mnt/gentoo/stage3.tar.xz -C /mnt/gentoo --xattrs-include='*.*' --numeric-owner || die "Error extrayendo stage3"
-rm /mnt/gentoo/stage3.tar.xz /mnt/gentoo/stage3.DIGESTS
+tar xpf /mnt/gentoo/stage3-amd64-openrc-20250622T165243Z.tar.xz -C /mnt/gentoo --xattrs-include='*.*' --numeric-owner || die "Error extrayendo stage3"
+rm /mnt/gentoo/stage3-amd64-openrc-20250622T165243Z.tar.xz /mnt/gentoo/stage3.DIGESTS
 
 ### Configuración make.conf optimizado ###
 info "Configurando make.conf para AMD Kaveri..."
