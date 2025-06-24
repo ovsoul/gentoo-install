@@ -10,8 +10,8 @@ set -e  # Salir si hay algún error
 DISK="/dev/sdb"  # SSD ubicado en /dev/sdb
 HOSTNAME="gentoo-amd"
 USERNAME="oscar"
-ROOT_PASSWORD="8080"
-USER_PASSWORD="8080"
+ROOT_PASSWORD="gentoo123"
+USER_PASSWORD="oscar123"
 TIMEZONE="America/Santiago"
 KEYMAP="la-latin1"  # Español Latinoamericano
 TOTAL_RAM="14"  # GB de RAM disponible
