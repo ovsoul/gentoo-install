@@ -1,23 +1,23 @@
 #!/bin/bash
-# Script de instalación Gentoo Linux - Versión 5.5
-# Corregido para errores de perfil + optimizado para AMD A8-7600B + KDE Plasma + PipeWire
+# Script de instalación Gentoo Linux - Versión 5.6
+# Solución para error de licencia linux-firmware + AMD A8-7600B + KDE Plasma + PipeWire
 
 set -euo pipefail
 
 ### CONFIGURACIÓN ##################################################
-DISK="/dev/sdb"                                  # ¡VERIFICAR CON lsblk!
+DISK="/dev/sdb"
 STAGE3_LOCAL="/home/gentoo/Downloads/stage3-amd64-openrc-20250622T165243Z.tar.xz"
 HOSTNAME="gentoo-amd"
 USERNAME="usuario"
-ROOT_PASSWORD="gentoo123"                        # ¡Cambiar después!
-USER_PASSWORD="usuario123"                       # ¡Cambiar después!
+ROOT_PASSWORD="gentoo123"
+USER_PASSWORD="usuario123"
 TIMEZONE="America/Santiago"
 KEYMAP="la-latin1"
 
 ### HARDWARE #######################################################
-CPU_FLAGS="-march=btver2 -O2 -pipe"              # AMD A8-7600B (Kaveri)
-SWAP_SIZE="4G"                                   # Para 14GB RAM
-VIDEO_CARDS="radeon amdgpu"                      # Radeon R7
+CPU_FLAGS="-march=btver2 -O2 -pipe"
+SWAP_SIZE="4G"
+VIDEO_CARDS="radeon amdgpu"
 
 ### MIRRORS ########################################################
 MIRROR_PRIMARY="https://mirror.leaseweb.com/gentoo"
@@ -86,6 +86,8 @@ USE="X elogind dbus networkmanager pipewire alsa vaapi vdpau qt5 qt6 kde plasma"
 VIDEO_CARDS="${VIDEO_CARDS}"
 GENTOO_MIRRORS="$MIRROR_PRIMARY $MIRROR_SECONDARY"
 FEATURES="parallel-fetch parallel-install"
+# Aceptar licencia problemática
+ACCEPT_LICENSE="*"
 EOF
 
     step "Configurando repositorios:"
@@ -122,7 +124,7 @@ set -euo pipefail
 die() { echo -e "\033[0;31m[ERROR]\033[0m $1"; exit 1; }
 info() { echo -e "\033[0;32m[INFO]\033[0m $1"; }
 
-# Sincronización inicial (múltiples métodos de respaldo)
+# Sincronización inicial
 info "Sincronizando repositorios Portage..."
 if ! emerge-webrsync; then
     warn "emerge-webrsync falló, intentando con mirror alternativo..."
@@ -131,6 +133,12 @@ if ! emerge-webrsync; then
         emerge --sync || die "¡Todos los métodos de sincronización fallaron!"
     fi
 fi
+
+# SOLUCIÓN PARA ERROR DE LICENCIA
+info "Configurando licencias para firmware..."
+mkdir -p /etc/portage/package.license
+echo "sys-kernel/linux-firmware linux-fw-redistributable" > /etc/portage/package.license/linux-firmware
+echo "sys-kernel/linux-firmware @BINARY-REDISTRIBUTABLE" >> /etc/portage/package.license/linux-firmware
 
 # Selección automática de perfil
 info "Buscando perfil compatible..."
@@ -151,9 +159,10 @@ locale-gen
 eselect locale set es_CL.utf8
 env-update && source /etc/profile
 
-# Instalación del kernel
-info "Instalando kernel precompilado..."
-emerge sys-kernel/gentoo-kernel-bin linux-firmware
+# Instalación del kernel y firmware (CON SOLUCIÓN APLICADA)
+info "Instalando kernel precompilado y firmware..."
+emerge sys-kernel/gentoo-kernel-bin
+emerge sys-kernel/linux-firmware
 
 # Configuración del sistema
 info "Configurando usuarios y servicios..."
