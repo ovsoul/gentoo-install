@@ -1,6 +1,9 @@
 #!/bin/bash
-# Script de instalación Gentoo Linux - Versión 5.6
-# Solución para error de licencia linux-firmware + AMD A8-7600B + KDE Plasma + PipeWire
+# Script de instalación Gentoo Linux - Versión 5.7
+# Soluciones integradas para:
+# - Error de licencia linux-firmware
+# - Requerimiento USE dracut para installkernel
+# - Optimizado para AMD A8-7600B + KDE Plasma + PipeWire
 
 set -euo pipefail
 
@@ -86,8 +89,7 @@ USE="X elogind dbus networkmanager pipewire alsa vaapi vdpau qt5 qt6 kde plasma"
 VIDEO_CARDS="${VIDEO_CARDS}"
 GENTOO_MIRRORS="$MIRROR_PRIMARY $MIRROR_SECONDARY"
 FEATURES="parallel-fetch parallel-install"
-# Aceptar licencia problemática
-ACCEPT_LICENSE="*"
+ACCEPT_LICENSE="* linux-fw-redistributable @BINARY-REDISTRIBUTABLE"
 EOF
 
     step "Configurando repositorios:"
@@ -102,6 +104,10 @@ sync-type = webrsync
 sync-uri = $MIRROR_PRIMARY/releases/amd64/autobuilds/
 auto-sync = yes
 EOF
+
+    step "Preconfigurando USE flags requeridas:"
+    mkdir -p /mnt/gentoo/etc/portage/package.use
+    echo "sys-kernel/installkernel dracut" > /mnt/gentoo/etc/portage/package.use/installkernel
 
     cp --dereference /etc/resolv.conf /mnt/gentoo/etc/
 }
@@ -134,11 +140,14 @@ if ! emerge-webrsync; then
     fi
 fi
 
-# SOLUCIÓN PARA ERROR DE LICENCIA
-info "Configurando licencias para firmware..."
+# Configuración adicional de licencias
+info "Configurando licencias específicas..."
 mkdir -p /etc/portage/package.license
-echo "sys-kernel/linux-firmware linux-fw-redistributable" > /etc/portage/package.license/linux-firmware
-echo "sys-kernel/linux-firmware @BINARY-REDISTRIBUTABLE" >> /etc/portage/package.license/linux-firmware
+echo "sys-kernel/linux-firmware linux-fw-redistributable @BINARY-REDISTRIBUTABLE" > /etc/portage/package.license/linux-firmware
+
+# Configuración adicional de USE flags
+info "Asegurando USE flags para installkernel..."
+echo "sys-kernel/installkernel dracut" >> /etc/portage/package.use/installkernel
 
 # Selección automática de perfil
 info "Buscando perfil compatible..."
@@ -159,8 +168,9 @@ locale-gen
 eselect locale set es_CL.utf8
 env-update && source /etc/profile
 
-# Instalación del kernel y firmware (CON SOLUCIÓN APLICADA)
-info "Instalando kernel precompilado y firmware..."
+# Instalación del sistema base
+info "Instalando componentes esenciales..."
+emerge sys-kernel/installkernel
 emerge sys-kernel/gentoo-kernel-bin
 emerge sys-kernel/linux-firmware
 
