@@ -92,13 +92,13 @@ FFLAGS="\${COMMON_FLAGS}"
 # Optimización para 4 cores + hyperthreading
 MAKEOPTS="-j5 -l4"
 
-# USE flags optimizados para AMD APU con gráficos Radeon R7 + KDE Plasma
+# USE flags optimizados para AMD APU con gráficos Radeon R7 + KDE Plasma + PipeWire
 USE="bindist mmx sse sse2 sse3 ssse3 sse4_1 sse4_2 avx fma3 fma4 popcnt aes"
-USE="\${USE} radeon r600 gallium llvm opencl vaapi vdpau dbus pulseaudio alsa"
+USE="\${USE} radeon r600 gallium llvm opencl vaapi vdpau dbus pipewire sound-server"
 USE="\${USE} X gtk qt5 qt6 kde plasma networkmanager wifi bluetooth usb"
 USE="\${USE} plasma activities semantic-desktop kwallet phonon"
 USE="\${USE} cups scanner jpeg png gif tiff pdf"
-USE="\${USE} -nvidia -nouveau -gnome -systemd"  # Excluir drivers NVIDIA y GNOME
+USE="\${USE} -nvidia -nouveau -gnome -systemd -pulseaudio -alsa"  # Excluir PulseAudio y ALSA en favor de PipeWire
 
 # Configuración de video para Radeon R7 (GCN 1.0)
 VIDEO_CARDS="radeon r600 radeonsi amdgpu"
@@ -247,6 +247,13 @@ log "Configurando cpupower para AMD A8-7600B..."
 rc-update add cpupower default
 echo 'cpupower_governor="ondemand"' > /etc/conf.d/cpupower
 
+# Instalar PipeWire como sistema de audio
+log "Instalando PipeWire como sistema de audio..."
+emerge media-video/pipewire
+emerge media-video/wireplumber  # Gestor de sesiones moderno para PipeWire
+emerge media-sound/pipewire-pulse  # Compatibilidad con PulseAudio
+emerge media-libs/libpulse  # Bibliotecas de compatibilidad
+
 # Instalar KDE Plasma completo
 log "Instalando KDE Plasma Desktop Environment..."
 emerge kde-plasma/plasma-meta
@@ -262,20 +269,41 @@ emerge sys-boot/grub:2
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=gentoo
 grub-mkconfig -o /boot/grub/grub.cfg
 
-# Configurar usuarios
-log "Configurando usuarios..."
+# Configurar usuarios y PipeWire
+log "Configurando usuarios y PipeWire..."
 echo "root:gentoo123" | chpasswd
 useradd -m -G users,wheel,audio,cdrom,video,usb,portage,plugdev -s /bin/bash oscar
 echo "oscar:oscar123" | chpasswd
 
-# Configurar grupos adicionales para KDE
+# Configurar grupos adicionales para KDE y audio
 usermod -a -G audio,video,usb,cdrom,plugdev,games,users oscar
+
+# Configurar PipeWire para el usuario oscar
+log "Configurando PipeWire para auto-inicio..."
+mkdir -p /home/oscar/.config/systemd/user
+chown -R oscar:oscar /home/oscar/.config
+
+# Crear script de configuración de PipeWire para el usuario
+cat > /home/oscar/.profile << 'EOF'
+# Configuración de PipeWire
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+if [ -d "$XDG_RUNTIME_DIR" ]; then
+    # Iniciar PipeWire si no está ejecutándose
+    if ! pgrep -x "pipewire" > /dev/null; then
+        pipewire &
+        pipewire-pulse &
+        wireplumber &
+    fi
+fi
+EOF
+
+chown oscar:oscar /home/oscar/.profile
 
 # Instalar sudo
 emerge app-admin/sudo
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
-# Configurar SDDM para KDE Plasma
+# Configurar SDDM para KDE Plasma con PipeWire
 log "Configurando SDDM Display Manager..."
 mkdir -p /etc/sddm.conf.d
 cat > /etc/sddm.conf.d/autologin.conf << EOF
@@ -303,6 +331,28 @@ Section "InputClass"
 EndSection
 EOF
 
+# Configurar PipeWire como sistema de audio predeterminado
+log "Configurando PipeWire como sistema de audio predeterminado..."
+mkdir -p /etc/pipewire
+cat > /etc/pipewire/pipewire.conf << EOF
+# Configuración básica de PipeWire
+context.properties = {
+    default.clock.rate = 48000
+    default.clock.quantum = 1024
+    default.clock.min-quantum = 32
+    default.clock.max-quantum = 8192
+}
+
+# Cargar módulos necesarios
+context.modules = [
+    { name = libpipewire-module-rtkit }
+    { name = libpipewire-module-protocol-native }
+    { name = libpipewire-module-client-node }
+    { name = libpipewire-module-adapter }
+    { name = libpipewire-module-link-factory }
+]
+EOF
+
 # Limpiar
 log "Limpiando archivos temporales..."
 rm /install_script_chroot.sh
@@ -326,7 +376,7 @@ umount -l /mnt/gentoo/dev{/shm,/pts,}
 umount -R /mnt/gentoo
 
 log "¡Instalación de Gentoo completada!"
-log "Optimizado para AMD A8-7600B con KDE Plasma Desktop"
+log "Optimizado para AMD A8-7600B con KDE Plasma Desktop y PipeWire"
 log "SSD instalado en /dev/sdb correctamente configurado"
 log "Puedes reiniciar el sistema ahora."
 log ""
@@ -337,6 +387,7 @@ log "  - RAM: 14GB con tmpfs para compilación"
 log "  - SSD: 256GB en /dev/sdb con optimizaciones discard y noatime"
 log "  - Particiones: 512MB EFI, 8GB swap, resto para root"
 log "  - Desktop: KDE Plasma con SDDM"
+log "  - Audio: PipeWire con WirePlumber y compatibilidad PulseAudio"
 log "  - Teclado: Español Latinoamericano (latam)"
 log "  - Aplicaciones: LibreOffice, Firefox incluidas"
 log ""
@@ -346,5 +397,6 @@ log "  Usuario: oscar / oscar123"
 log ""
 warn "IMPORTANTE: Cambia las contraseñas después del primer inicio!"
 warn "IMPORTANTE: El usuario 'oscar' tiene auto-login habilitado en SDDM!"
+warn "IMPORTANTE: PipeWire se iniciará automáticamente al hacer login!"
 warn "IMPORTANTE: Ejecuta 'sensors-detect' para configurar sensores!"
 warn "IMPORTANTE: SSD correctamente configurado en /dev/sdb!"
