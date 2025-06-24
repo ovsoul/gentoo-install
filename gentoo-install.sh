@@ -28,8 +28,7 @@ mount "${DISK}1" /mnt/gentoo/boot
 
 # 📥 Descargar stage3
 cd /mnt/gentoo
-STAGE_URL=$(curl -s https://bouncer.gentoo.org/fetch/root/all/releases/amd64/autobuilds/latest-stage3-amd64-openrc.txt | awk '/tar.xz/ {print $1}')
-wget "https://bouncer.gentoo.org/fetch/root/all/releases/amd64/autobuilds/$STAGE_URL"
+STAGE_URL=$(curl -s https://distfiles.gentoo.org/releases/amd64/autobuilds/20250622T165243Z/stage3-amd64-openrc-20250622T165243Z.tar.xz/$STAGE_URL"
 tar xpvf stage3-*.tar.xz --xattrs-include='*.*' --numeric-owner
 
 # 🌐 Montajes y preparación para chroot
